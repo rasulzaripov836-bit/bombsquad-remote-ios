@@ -1048,10 +1048,10 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
     } else if (@available(iOS 11.0, *)) {
       fBase = CGRectMake(
           UIApplication.sharedApplication.keyWindow.safeAreaInsets.left * 2,
-          height * 0.65 - 120, 200, 200);
+          height * 0.65 - 84, 140, 140);
     } else {
       // fBase = CGRectMake(0,height - 240,200,200);
-      fBase = CGRectMake(0, height * 0.65 - 120, 200, 200);
+      fBase = CGRectMake(0, height * 0.65 - 84, 140, 140);
     }
 
     UIView *v = self.dPadBacking;
@@ -1062,8 +1062,8 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
                          UIViewAutoresizingFlexibleBottomMargin;
     [self.view addSubview:v];
 
-    float thumbSize = 128;
-    float centerSize = 256;
+    float thumbSize = 45; // 50% smaller visible joystick thumb
+    float centerSize = 90; // 50% smaller visible joystick center
     float ins;
 
     // center
@@ -1114,7 +1114,7 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
       fBase = CGRectMake(width - 210, height / 2 - 120, 200, 200);
     } else {
-      fBase = CGRectMake(width - 210, height * 0.65 - 120, 200, 200);
+      fBase = CGRectMake(width - 150, height * 0.65 - 84, 140, 140);
     }
 
     UIView *v = self.buttonBacking;
@@ -1127,7 +1127,7 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
     [self.view addSubview:v];
 
     float offset = 0.73f;
-    float buttonSize = 160.0f;
+    float buttonSize = 56.0f; // 50% smaller action buttons
 
     float offs = fBase.size.width * 0.5f * offset;
     float ins = (fBase.size.width - buttonSize) * 0.5f;
