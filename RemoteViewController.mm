@@ -971,7 +971,7 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
 #define BTN_SIZE 0.36f         // action-button cluster area size
 #define BTN_CENTER_X 0.379f    // cluster centre, from right safe edge
 #define BTN_CENTER_Y 0.768f    // cluster centre, from top
-#define BTN_PIECE_RATIO 0.8f   // size of each button vs cluster area
+#define BTN_PIECE_RATIO 0.77f   // size of each button vs cluster area
 #define BTN_OFFSET 0.73f       // how far pieces sit from the cluster centre
 
 - (void)layoutControls {
