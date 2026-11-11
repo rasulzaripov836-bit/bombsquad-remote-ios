@@ -3,7 +3,7 @@
 #import "NSTimerUtils.h"
 #import "RemoteViewController.h"
 #import "UIViewUtilities.h"
-#import <GameController/GCController.h>
+#import <GameController/GameController.h>
 #import <GameController/GCGamepad.h>
 #import <GameController/GCExtendedGamepad.h>
 #include <arpa/inet.h>
