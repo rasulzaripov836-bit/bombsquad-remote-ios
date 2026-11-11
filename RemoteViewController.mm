@@ -963,13 +963,13 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
 // Everything is a fraction of "u" = usable screen height (landscape).
 // Change these numbers to make things bigger/smaller or move them.
 #define JOY_SIZE 0.315f        // joystick touch area size
-#define JOY_CENTER_X 0.344f    // joystick centre, from left safe edge
+#define JOY_CENTER_X 0.329f    // joystick centre, from left safe edge
 #define JOY_CENTER_Y 0.743f    // joystick centre, from top (0=top, 1=bottom)
 #define JOY_BASE_RATIO 1.286f  // big flower circle vs joystick area size
 #define JOY_THUMB_RATIO 0.5f   // dark thumb vs flower circle size
 
 #define BTN_SIZE 0.36f         // action-button cluster area size
-#define BTN_CENTER_X 0.396f    // cluster centre, from right safe edge
+#define BTN_CENTER_X 0.379f    // cluster centre, from right safe edge
 #define BTN_CENTER_Y 0.768f    // cluster centre, from top
 #define BTN_PIECE_RATIO 0.8f   // size of each button vs cluster area
 #define BTN_OFFSET 0.73f       // how far pieces sit from the cluster centre
