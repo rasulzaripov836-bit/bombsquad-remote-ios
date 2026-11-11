@@ -969,8 +969,8 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
 #define JOY_THUMB_RATIO 0.5f   // dark thumb vs flower circle size
 
 #define BTN_SIZE 0.36f         // action-button cluster area size
-#define BTN_CENTER_X 0.357f    // cluster centre, from right safe edge
-#define BTN_CENTER_Y 0.768f    // cluster centre, from top
+#define BTN_CENTER_X 0.358f    // cluster centre, from right safe edge
+#define BTN_CENTER_Y 0.750f    // cluster centre, from top
 #define BTN_PIECE_RATIO 0.76f   // size of each button vs cluster area
 #define BTN_OFFSET 0.73f       // how far pieces sit from the cluster centre
 
