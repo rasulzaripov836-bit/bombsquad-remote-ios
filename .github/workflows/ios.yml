@@ -1,0 +1,17 @@
+
+name: Inspect iOS Project
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inspect Xcode project
+        run: |
+          ls -la
+          xcodebuild -list -project BSRemote.xcodeproj
