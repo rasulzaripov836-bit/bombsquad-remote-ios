@@ -1,17 +1,38 @@
 
-name: Inspect iOS Project
+name: Build BSRemote IPA
 
 on:
   workflow_dispatch:
 
 jobs:
-  inspect:
+  build:
     runs-on: macos-15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inspect Xcode project
+      - name: Build iOS app
         run: |
-          ls -la
-          xcodebuild -list -project BSRemote.xcodeproj
+          xcodebuild \
+            -project BSRemote.xcodeproj \
+            -scheme BSRemote \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir Payload
+          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" -print -quit)
+          test -n "$APP"
+          cp -R "$APP" Payload/
+          zip -r BSRemote.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: BSRemote-IPA
+          path: BSRemote.ipa
