@@ -959,6 +959,102 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
   [self doStateChangeForced:NO];
 }
 
+// ---- Controls layout (proportions measured from the Android version) ----
+// Everything is a fraction of "u" = usable screen height (landscape).
+// Change these numbers to make things bigger/smaller or move them.
+#define JOY_SIZE 0.315f        // joystick touch area size
+#define JOY_CENTER_X 0.344f    // joystick centre, from left safe edge
+#define JOY_CENTER_Y 0.743f    // joystick centre, from top (0=top, 1=bottom)
+#define JOY_BASE_RATIO 1.286f  // big flower circle vs joystick area size
+#define JOY_THUMB_RATIO 0.5f   // dark thumb vs flower circle size
+
+#define BTN_SIZE 0.36f         // action-button cluster area size
+#define BTN_CENTER_X 0.396f    // cluster centre, from right safe edge
+#define BTN_CENTER_Y 0.768f    // cluster centre, from top
+#define BTN_PIECE_RATIO 0.8f   // size of each button vs cluster area
+#define BTN_OFFSET 0.73f       // how far pieces sit from the cluster centre
+
+- (void)layoutControls {
+  CGFloat width = self.view.bounds.size.width;
+  CGFloat height = self.view.bounds.size.height;
+
+  UIEdgeInsets safe = UIEdgeInsetsZero;
+  if (@available(iOS 11.0, *)) {
+    safe = self.view.safeAreaInsets;
+  }
+
+  // usable height; capped so huge iPad screens don't get giant controls
+  CGFloat u = fmin(height - safe.top - safe.bottom, 520.0f);
+  CGFloat bottomY = height - safe.bottom; // bottom of the usable area
+  CGFloat topY = bottomY - u;
+
+  UIImageView *i;
+  CGRect f;
+
+  // ---- joystick (bottom left) ----
+  CGFloat joy = round(u * JOY_SIZE);
+  CGFloat jcx = safe.left + u * JOY_CENTER_X;
+  CGFloat jcy = topY + u * JOY_CENTER_Y;
+  self.dPadBacking.autoresizingMask = UIViewAutoresizingNone;
+  self.dPadBacking.frame =
+      CGRectMake(round(jcx - joy * 0.5), round(jcy - joy * 0.5), joy, joy);
+
+  CGFloat baseSize = round(joy * JOY_BASE_RATIO);
+  CGFloat thumbSize = round(baseSize * JOY_THUMB_RATIO);
+
+  i = self.dPadCenterImage;
+  i.autoresizingMask = UIViewAutoresizingNone;
+  i.frame = CGRectMake((joy - baseSize) * 0.5, (joy - baseSize) * 0.5,
+                       baseSize, baseSize);
+
+  i = self.dPadThumbImage;
+  i.autoresizingMask = UIViewAutoresizingNone;
+  f = CGRectMake((joy - thumbSize) * 0.5, (joy - thumbSize) * 0.5, thumbSize,
+                 thumbSize);
+  i.frame = f;
+  self.dPadThumbPressedImage.autoresizingMask = UIViewAutoresizingNone;
+  self.dPadThumbPressedImage.frame = f;
+
+  // ---- action buttons (bottom right) ----
+  CGFloat bsz = round(u * BTN_SIZE);
+  CGFloat bcx = (width - safe.right) - u * BTN_CENTER_X;
+  CGFloat bcy = topY + u * BTN_CENTER_Y;
+  self.buttonBacking.autoresizingMask = UIViewAutoresizingNone;
+  self.buttonBacking.frame =
+      CGRectMake(round(bcx - bsz * 0.5), round(bcy - bsz * 0.5), bsz, bsz);
+
+  CGFloat pieceSize = round(bsz * BTN_PIECE_RATIO);
+  CGFloat offs = bsz * 0.5f * BTN_OFFSET;
+  CGFloat mid = bsz * 0.5f;
+
+  struct {
+    UIImageView *normal;
+    UIImageView *pressed;
+    CGFloat dx, dy;
+  } items[4] = {
+      {self.buttonImagePunch, self.buttonImagePunchPressed, -offs, 0},
+      {self.buttonImageJump, self.buttonImageJumpPressed, 0, offs},
+      {self.buttonImageThrow, self.buttonImageThrowPressed, 0, -offs},
+      {self.buttonImageBomb, self.buttonImageBombPressed, offs, 0},
+  };
+  for (int k = 0; k < 4; k++) {
+    f = CGRectMake(mid + items[k].dx - pieceSize * 0.5,
+                   mid + items[k].dy - pieceSize * 0.5, pieceSize, pieceSize);
+    items[k].normal.autoresizingMask = UIViewAutoresizingNone;
+    items[k].pressed.autoresizingMask = UIViewAutoresizingNone;
+    items[k].normal.frame = f;
+    items[k].pressed.frame = f;
+  }
+
+  // keep the floating-joystick base visuals consistent after a re-layout
+  [self updateDPadBase];
+}
+
+- (void)viewDidLayoutSubviews {
+  [super viewDidLayoutSubviews];
+  [self layoutControls];
+}
+
 - (void)viewDidLoad {
   [super viewDidLoad];
 
@@ -1039,179 +1135,28 @@ static void readCallback(CFSocketRef cfSocket, CFSocketCallBackType type,
   float buttonWidth = 80;
   float buttonHeight = 60;
 
-  // dpad
-  {
+  // dpad + buttons: here we only create/attach the subviews.
+  // Sizes and positions are set in -layoutControls (called from
+  // -viewDidLayoutSubviews) so they always match the real landscape size.
+  [self.view addSubview:self.dPadBacking];
+  [_dPadBacking addSubview:self.dPadCenterImage];
+  [_dPadBacking addSubview:self.dPadThumbImage];
+  self.dPadThumbPressedImage.hidden = YES;
+  [_dPadBacking addSubview:self.dPadThumbPressedImage];
 
-    CGRect fBase;
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-      fBase = CGRectMake(0, height / 2 - 120, 200, 200);
-    } else if (@available(iOS 11.0, *)) {
-      fBase = CGRectMake(
-          UIApplication.sharedApplication.keyWindow.safeAreaInsets.left * 2,
-          height * 0.65 - 84, 140, 140);
-    } else {
-      // fBase = CGRectMake(0,height - 240,200,200);
-      fBase = CGRectMake(0, height * 0.65 - 84, 140, 140);
-    }
-
-    UIView *v = self.dPadBacking;
-    // backing
-    v.frame = fBase;
-    v.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleRightMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [self.view addSubview:v];
-
-    float thumbSize = 45; // 50% smaller visible joystick thumb
-    float centerSize = 90; // 50% smaller visible joystick center
-    float ins;
-
-    // center
-    i = self.dPadCenterImage;
-    f = fBase;
-    ins = (fBase.size.width - centerSize) * 0.5;
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _dPadBacking.frame.origin.x;
-    f.origin.y -= _dPadBacking.frame.origin.y;
-    i.frame = f;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleRightMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_dPadBacking addSubview:i];
-
-    // thumb
-    i = self.dPadThumbImage;
-    f = fBase;
-    ins = (fBase.size.width - thumbSize) * 0.5;
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _dPadBacking.frame.origin.x;
-    f.origin.y -= _dPadBacking.frame.origin.y;
-    i.frame = f;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleRightMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_dPadBacking addSubview:i];
-
-    // thumbPressed
-    i = self.dPadThumbPressedImage;
-    f = fBase;
-    ins = (fBase.size.width - thumbSize) * 0.5;
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _dPadBacking.frame.origin.x;
-    f.origin.y -= _dPadBacking.frame.origin.y;
-    i.frame = f;
-    i.hidden = YES;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleRightMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_dPadBacking addSubview:i];
-  }
-
-  // buttons
-  {
-
-    CGRect fBase;
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-      fBase = CGRectMake(width - 210, height / 2 - 120, 200, 200);
-    } else {
-      fBase = CGRectMake(width - 150, height * 0.65 - 84, 140, 140);
-    }
-
-    UIView *v = self.buttonBacking;
-
-    // backing
-    v.frame = fBase;
-    v.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [self.view addSubview:v];
-
-    float offset = 0.73f;
-    float buttonSize = 56.0f; // 50% smaller action buttons
-
-    float offs = fBase.size.width * 0.5f * offset;
-    float ins = (fBase.size.width - buttonSize) * 0.5f;
-
-    i = self.buttonImagePunch;
-    f = fBase;
-    f = CGRectOffset(f, -offs, 0);
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _buttonBacking.frame.origin.x;
-    f.origin.y -= _buttonBacking.frame.origin.y;
-    i.frame = f;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImagePunchPressed;
-    i.frame = f;
-    i.hidden = YES;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImageJump;
-    f = fBase;
-    f = CGRectOffset(f, 0, offs);
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _buttonBacking.frame.origin.x;
-    f.origin.y -= _buttonBacking.frame.origin.y;
-    i.frame = f;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImageJumpPressed;
-    i.frame = f;
-    i.hidden = YES;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImageThrow;
-    f = fBase;
-    f = CGRectOffset(f, 0, -offs);
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _buttonBacking.frame.origin.x;
-    f.origin.y -= _buttonBacking.frame.origin.y;
-    i.frame = f;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImageThrowPressed;
-    i.frame = f;
-    i.hidden = YES;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImageBomb;
-    f = fBase;
-    f = CGRectOffset(f, offs, 0);
-    f = CGRectInset(f, ins, ins);
-    f.origin.x -= _buttonBacking.frame.origin.x;
-    f.origin.y -= _buttonBacking.frame.origin.y;
-    i.frame = f;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-
-    i = self.buttonImageBombPressed;
-    i.frame = f;
-    i.hidden = YES;
-    i.autoresizingMask = UIViewAutoresizingFlexibleTopMargin |
-                         UIViewAutoresizingFlexibleLeftMargin |
-                         UIViewAutoresizingFlexibleBottomMargin;
-    [_buttonBacking addSubview:i];
-  }
+  [self.view addSubview:self.buttonBacking];
+  self.buttonImagePunchPressed.hidden = YES;
+  self.buttonImageJumpPressed.hidden = YES;
+  self.buttonImageThrowPressed.hidden = YES;
+  self.buttonImageBombPressed.hidden = YES;
+  [_buttonBacking addSubview:self.buttonImagePunch];
+  [_buttonBacking addSubview:self.buttonImagePunchPressed];
+  [_buttonBacking addSubview:self.buttonImageJump];
+  [_buttonBacking addSubview:self.buttonImageJumpPressed];
+  [_buttonBacking addSubview:self.buttonImageThrow];
+  [_buttonBacking addSubview:self.buttonImageThrowPressed];
+  [_buttonBacking addSubview:self.buttonImageBomb];
+  [_buttonBacking addSubview:self.buttonImageBombPressed];
 
   // options button
   b = [UIButton buttonWithType:UIButtonTypeCustom];
